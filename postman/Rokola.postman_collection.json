@@ -1,0 +1,588 @@
+{
+  "info": {
+    "name": "Rokola Backend",
+    "description": "Pruebas del backend de Rokola, organizadas por paso de desarrollo. Usar con el entorno 'Rokola - Local'.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Paso 1 - Conexion a PostgreSQL y Flyway",
+      "description": "Verifica que el backend arranca, se conecta a PostgreSQL y que Flyway tiene registrada la version 1 del esquema.",
+      "item": [
+        {
+          "name": "Salud de la aplicacion y de la base de datos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const cuerpo = pm.response.json();",
+                  "",
+                  "pm.test('Responde 200 OK', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('La aplicacion esta UP', () => {",
+                  "    pm.expect(cuerpo.status).to.eql('UP');",
+                  "});",
+                  "",
+                  "pm.test('La base de datos esta UP', () => {",
+                  "    pm.expect(cuerpo.components.db.status).to.eql('UP');",
+                  "});",
+                  "",
+                  "pm.test('La base de datos es PostgreSQL', () => {",
+                  "    pm.expect(cuerpo.components.db.details.database).to.eql('PostgreSQL');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["actuator", "health"]
+            },
+            "description": "Actuator ejecuta una consulta de validacion contra PostgreSQL. Si la conexion falla, components.db.status es DOWN y la respuesta es 503."
+          },
+          "response": []
+        },
+        {
+          "name": "Estado de las migraciones Flyway",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const cuerpo = pm.response.json();",
+                  "const contexto = Object.values(cuerpo.contexts)[0];",
+                  "const migraciones = Object.values(contexto.flywayBeans)[0].migrations;",
+                  "",
+                  "pm.test('Responde 200 OK', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Flyway tiene registrada la version 1', () => {",
+                  "    const v1 = migraciones.filter(m => m.version === '1');",
+                  "    pm.expect(v1.length, 'no hay ninguna migracion con version 1').to.be.above(0);",
+                  "    pm.expect(v1.map(m => m.state)).to.satisfy(",
+                  "        estados => estados.some(e => e === 'SUCCESS' || e === 'BASELINE'),",
+                  "        'la version 1 debe estar aplicada (SUCCESS) o marcada como baseline (BASELINE)'",
+                  "    );",
+                  "});",
+                  "",
+                  "pm.test('No hay migraciones fallidas ni pendientes', () => {",
+                  "    // BASELINE_IGNORED: el script existe pero no se ejecuto porque la baseline ya lo cubre.",
+                  "    const permitidos = ['SUCCESS', 'BASELINE', 'BASELINE_IGNORED', 'BELOW_BASELINE'];",
+                  "    const problemas = migraciones.filter(m => !permitidos.includes(m.state));",
+                  "    pm.expect(problemas.map(m => `${m.version} ${m.state}`)).to.be.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/flyway",
+              "host": ["{{baseUrl}}"],
+              "path": ["actuator", "flyway"]
+            },
+            "description": "Lee la tabla flyway_schema_history. En db_rokola (restaurada del backup) la version 1 aparece como BASELINE y el script V1 como BASELINE_IGNORED (no se ejecuto); en una base vacia V1 aparece como SUCCESS."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Paso 2 - Establecimientos",
+      "description": "Consulta de establecimientos: listado paginado, detalle por id y errores 404/400 en formato Problem Details.",
+      "item": [
+        {
+          "name": "Listar establecimientos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const cuerpo = pm.response.json();",
+                  "const camposEsperados = ['id', 'nombre', 'slug', 'direccion', 'zonaHoraria', 'activo', 'fechaCreacion'];",
+                  "",
+                  "pm.test('Responde 200 OK con JSON', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+                  "});",
+                  "",
+                  "pm.test('Devuelve al menos un establecimiento', () => {",
+                  "    pm.expect(cuerpo.content).to.be.an('array').that.is.not.empty;",
+                  "});",
+                  "",
+                  "pm.test('Cada establecimiento tiene exactamente los campos del contrato', () => {",
+                  "    cuerpo.content.forEach(e => pm.expect(Object.keys(e)).to.have.members(camposEsperados));",
+                  "});",
+                  "",
+                  "pm.test('Viene ordenado por id ascendente', () => {",
+                  "    const ids = cuerpo.content.map(e => e.id);",
+                  "    pm.expect(ids).to.eql([...ids].sort((a, b) => a - b));",
+                  "});",
+                  "",
+                  "pm.test('Incluye los datos de paginacion (pagina 0, tamano 20)', () => {",
+                  "    pm.expect(cuerpo.page.number).to.eql(0);",
+                  "    pm.expect(cuerpo.page.size).to.eql(20);",
+                  "    pm.expect(cuerpo.page.totalElements).to.be.at.least(cuerpo.content.length);",
+                  "});",
+                  "",
+                  "// Guarda el primer id para la peticion 'Obtener establecimiento por id'.",
+                  "pm.collectionVariables.set('idEstablecimiento', cuerpo.content[0].id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/establecimientos",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "establecimientos"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Listar con un elemento por pagina",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const cuerpo = pm.response.json();",
+                  "",
+                  "pm.test('Responde 200 OK', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Devuelve exactamente 1 establecimiento', () => {",
+                  "    pm.expect(cuerpo.content).to.have.lengthOf(1);",
+                  "    pm.expect(cuerpo.page.size).to.eql(1);",
+                  "});",
+                  "",
+                  "pm.test('Hay tantas paginas como establecimientos', () => {",
+                  "    pm.expect(cuerpo.page.totalPages).to.eql(cuerpo.page.totalElements);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/establecimientos?page=0&size=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "establecimientos"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "1" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Tamano de pagina mayor al maximo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const cuerpo = pm.response.json();",
+                  "",
+                  "pm.test('Responde 200 OK', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('El tamano se limita a 100 aunque se pidan 500', () => {",
+                  "    pm.expect(cuerpo.page.size).to.eql(100);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/establecimientos?size=500",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "establecimientos"],
+              "query": [
+                { "key": "size", "value": "500" }
+              ]
+            },
+            "description": "Evita que un cliente pida miles de filas de una sola vez."
+          },
+          "response": []
+        },
+        {
+          "name": "Obtener establecimiento por id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const cuerpo = pm.response.json();",
+                  "",
+                  "pm.test('Responde 200 OK', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Devuelve el establecimiento pedido', () => {",
+                  "    pm.expect(cuerpo.id).to.eql(Number(pm.collectionVariables.get('idEstablecimiento')));",
+                  "});",
+                  "",
+                  "pm.test('Los campos tienen el formato esperado', () => {",
+                  "    pm.expect(cuerpo.nombre).to.be.a('string').that.is.not.empty;",
+                  "    pm.expect(cuerpo.slug).to.match(/^[a-z0-9-]+$/);",
+                  "    pm.expect(cuerpo.zonaHoraria).to.be.a('string').that.is.not.empty;",
+                  "    pm.expect(cuerpo.activo).to.be.a('boolean');",
+                  "    pm.expect(Date.parse(cuerpo.fechaCreacion), 'fechaCreacion debe ser una fecha ISO-8601').to.not.be.NaN;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/establecimientos/{{idEstablecimiento}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "establecimientos", "{{idEstablecimiento}}"]
+            },
+            "description": "Usa el id guardado por 'Listar establecimientos' (por defecto 1)."
+          },
+          "response": []
+        },
+        {
+          "name": "Obtener establecimiento inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const cuerpo = pm.response.json();",
+                  "",
+                  "pm.test('Responde 404 Not Found', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test('El error usa el formato Problem Details', () => {",
+                  "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/problem+json');",
+                  "    pm.expect(cuerpo.status).to.eql(404);",
+                  "    pm.expect(cuerpo.title).to.eql('Establecimiento no encontrado');",
+                  "    pm.expect(cuerpo.detail).to.include('999999999');",
+                  "    pm.expect(cuerpo.instance).to.eql('/api/establecimientos/999999999');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/establecimientos/999999999",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "establecimientos", "999999999"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Id con formato invalido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const cuerpo = pm.response.json();",
+                  "",
+                  "pm.test('Responde 400 Bad Request', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('El error usa el formato Problem Details', () => {",
+                  "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/problem+json');",
+                  "    pm.expect(cuerpo.status).to.eql(400);",
+                  "});",
+                  "",
+                  "pm.test('No expone detalles internos (stack trace o clases Java)', () => {",
+                  "    pm.expect(pm.response.text()).to.not.match(/Exception|at com\\.|at org\\./);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/establecimientos/abc",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "establecimientos", "abc"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Paso 3 - Horarios, configuracion y codigos QR",
+      "description": "Datos asociados a un establecimiento. Usa la variable idEstablecimiento (por defecto 1).",
+      "item": [
+        {
+          "name": "Horarios de un establecimiento",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const horarios = pm.response.json();",
+                  "const camposEsperados = ['id', 'diaSemana', 'horaInicio', 'horaFin', 'activo'];",
+                  "const formatoHora = /^\\d{2}:\\d{2}(:\\d{2})?$/;",
+                  "",
+                  "pm.test('Responde 200 OK con una lista', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(horarios).to.be.an('array').that.is.not.empty;",
+                  "});",
+                  "",
+                  "pm.test('Cada horario tiene exactamente los campos del contrato', () => {",
+                  "    horarios.forEach(h => pm.expect(Object.keys(h)).to.have.members(camposEsperados));",
+                  "});",
+                  "",
+                  "pm.test('diaSemana esta entre 1 (lunes) y 7 (domingo)', () => {",
+                  "    horarios.forEach(h => pm.expect(h.diaSemana).to.be.within(1, 7));",
+                  "});",
+                  "",
+                  "pm.test('Las horas tienen formato HH:mm:ss y no son iguales', () => {",
+                  "    horarios.forEach(h => {",
+                  "        pm.expect(h.horaInicio).to.match(formatoHora);",
+                  "        pm.expect(h.horaFin).to.match(formatoHora);",
+                  "        pm.expect(h.horaInicio).to.not.eql(h.horaFin);",
+                  "    });",
+                  "});",
+                  "",
+                  "pm.test('Viene ordenado por dia de la semana', () => {",
+                  "    const dias = horarios.map(h => h.diaSemana);",
+                  "    pm.expect(dias).to.eql([...dias].sort((a, b) => a - b));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/establecimientos/{{idEstablecimiento}}/horarios",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "establecimientos", "{{idEstablecimiento}}", "horarios"]
+            },
+            "description": "Si horaFin es menor que horaInicio, la franja termina al dia siguiente (por ejemplo 18:00 a 02:00)."
+          },
+          "response": []
+        },
+        {
+          "name": "Horarios de un establecimiento inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404 y no una lista vacia', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/problem+json');",
+                  "    pm.expect(pm.response.json().title).to.eql('Establecimiento no encontrado');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/establecimientos/999999999/horarios",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "establecimientos", "999999999", "horarios"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Configuracion del servicio",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const config = pm.response.json();",
+                  "const camposEsperados = ['estadoManual', 'maxSolicitudesDispositivo', 'duracionMaxSeg', 'minutosBloqueoRepeticion', 'avisoPrivacidadVersion', 'fechaModificacion'];",
+                  "",
+                  "pm.test('Responde 200 OK', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Tiene exactamente los campos del contrato', () => {",
+                  "    pm.expect(Object.keys(config)).to.have.members(camposEsperados);",
+                  "});",
+                  "",
+                  "pm.test('estadoManual es uno de los valores permitidos (en minusculas)', () => {",
+                  "    pm.expect(config.estadoManual).to.be.oneOf(['disponible', 'pausado', 'mantenimiento']);",
+                  "});",
+                  "",
+                  "pm.test('Los limites respetan las reglas de la base de datos', () => {",
+                  "    pm.expect(config.maxSolicitudesDispositivo).to.be.a('number').and.at.least(0);",
+                  "    pm.expect(config.duracionMaxSeg).to.be.a('number').and.above(0);",
+                  "    pm.expect(config.minutosBloqueoRepeticion).to.be.a('number').and.at.least(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/establecimientos/{{idEstablecimiento}}/configuracion",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "establecimientos", "{{idEstablecimiento}}", "configuracion"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Configuracion de un establecimiento inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404 Establecimiento no encontrado', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/problem+json');",
+                  "    pm.expect(pm.response.json().title).to.eql('Establecimiento no encontrado');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/establecimientos/999999999/configuracion",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "establecimientos", "999999999", "configuracion"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Codigos QR de un establecimiento",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const codigos = pm.response.json();",
+                  "const camposEsperados = ['id', 'fechaCreacion', 'fechaRevocacion', 'activo'];",
+                  "",
+                  "pm.test('Responde 200 OK con una lista', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(codigos).to.be.an('array').that.is.not.empty;",
+                  "});",
+                  "",
+                  "pm.test('Cada codigo tiene exactamente los campos del contrato', () => {",
+                  "    codigos.forEach(c => pm.expect(Object.keys(c)).to.have.members(camposEsperados));",
+                  "});",
+                  "",
+                  "pm.test('SEGURIDAD: no expone la huella del token', () => {",
+                  "    pm.expect(pm.response.text()).to.not.include('token');",
+                  "    pm.expect(pm.response.text(), 'la respuesta contiene un hash SHA-256').to.not.match(/[0-9a-f]{64}/i);",
+                  "});",
+                  "",
+                  "pm.test('Viene del mas reciente al mas antiguo', () => {",
+                  "    const fechas = codigos.map(c => Date.parse(c.fechaCreacion));",
+                  "    pm.expect(fechas).to.eql([...fechas].sort((a, b) => b - a));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/establecimientos/{{idEstablecimiento}}/codigos-qr",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "establecimientos", "{{idEstablecimiento}}", "codigos-qr"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Codigos QR de un establecimiento inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404 Establecimiento no encontrado', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/problem+json');",
+                  "    pm.expect(pm.response.json().title).to.eql('Establecimiento no encontrado');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/establecimientos/999999999/codigos-qr",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "establecimientos", "999999999", "codigos-qr"]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "idEstablecimiento",
+      "value": "1"
+    }
+  ]
+}
