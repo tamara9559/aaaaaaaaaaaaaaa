@@ -1,6 +1,6 @@
 # Progreso del backend de Rokola
 
-Última actualización: 2026-11-05
+Última actualización: 2026-11-07
 
 ## Estado actual
 
@@ -50,6 +50,20 @@ Pruebas: `postman collection run postman\Rokola.postman_collection.json -e postm
 - Archivos nuevos en `establecimiento/`: `HorarioOperacion.kt`, `ConfiguracionServicio.kt`, `CodigoQr.kt`, `EstadoServicio.kt` (enum + conversor a texto en minúsculas), sus `*Repository.kt` y `*Response.kt`, y `ConfiguracionServicioNoEncontradaException.kt`.
 - Postman: carpeta "Paso 3", 6 peticiones y 16 aserciones (incluida una prueba de seguridad contra la fuga del hash). La colección completa da 41/41.
 
+**Paso 4 – Módulo `usuario`: usuarios y roles (solo lectura):** terminado y verificado (2026-11-07).
+
+| Endpoint | Respuesta |
+|---|---|
+| `GET /api/roles` | Lista de roles ordenada por id (Administrador, Operador) |
+| `GET /api/establecimientos/{id}/usuarios` | Usuarios del establecimiento ordenados por id, cada uno con su rol; 404 "Establecimiento no encontrado" si no existe |
+| `GET /api/usuarios/{id}` | 200 con el usuario; 404 "Usuario no encontrado"; 400 si el id no es numérico |
+
+- Archivos en `usuario/`: `Rol.kt`, `Usuario.kt` (entidades), `RolRepository.kt`, `UsuarioRepository.kt`, `RolResponse.kt`, `UsuarioResponse.kt`, `UsuarioService.kt`, `UsuarioController.kt`, `UsuarioNoEncontradoException.kt`.
+- `id_rol` es `smallint`, por eso en Kotlin es `Short`.
+- La respuesta **no incluye** `passwordHash` ni `intentosFallidos` (datos internos del login).
+- `@EntityGraph(attributePaths = ["rol"])` trae cada usuario con su rol en una sola consulta (evita una consulta extra por usuario). Verificado en el log: 2 consultas por petición (existe el establecimiento + usuarios con rol).
+- Postman: carpeta "Paso 4 - Usuarios y roles", 6 peticiones y 19 aserciones (incluidas pruebas de seguridad contra la fuga de la contraseña). Nueva variable de colección `idUsuario` (por defecto 1). La colección completa da 60/60.
+
 ## Stack
 
 - Kotlin 2.3.21, Spring Boot 4.1.2, Java 21, Gradle 9.8.2 (Kotlin DSL)
@@ -76,8 +90,11 @@ Pruebas: `postman collection run postman\Rokola.postman_collection.json -e postm
 - **Supuesto:** `dia_semana` sigue ISO-8601 (1 = lunes … 7 = domingo). Los datos de prueba encajan (Bar La Nota abre de jueves a domingo), pero el PDF no lo dice. Confirmar.
 - **Escaneo del QR (pendiente):** la base solo guarda la huella del token, no el token. Falta definir el algoritmo (los datos de prueba parecen SHA-256) y cómo se generan los QR. Se resolverá junto con `dispositivo`/`sesion`.
 - No hay datos de prueba de un establecimiento sin configuración, así que el 404 "Configuración no encontrada" no tiene prueba en Postman.
+- **Hashes de contraseña de prueba inválidos:** los 5 `password_hash` empiezan como BCrypt (`$2b$12$`) pero miden 64 caracteres; un BCrypt real mide 60. Con ellos nadie podrá iniciar sesión en la Etapa 7 (ver pregunta 14).
+- Los endpoints de usuarios muestran nombres y correos sin autenticación: se restringirán en la Etapa 7.
 
 ## Próximos pasos
 
-1. Paso 4: módulo `usuario` y `rol` (lectura), como base para la autenticación.
-2. Escritura de establecimientos (crear/editar): queda para cuando exista la autenticación (Etapa 7), porque solo debe hacerla un administrador.
+1. Paso 5: módulo `sesion` (lectura): sesiones musicales de cada establecimiento y su estado.
+2. Después, `dispositivo`, `cancion`, `solicitud` y `voto`, en ese orden (Etapa 3 del PDF).
+3. Escritura de establecimientos y usuarios (crear/editar): queda para cuando exista la autenticación (Etapa 7), porque solo debe hacerla un administrador.

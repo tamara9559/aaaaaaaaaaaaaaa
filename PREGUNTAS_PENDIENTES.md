@@ -1,6 +1,6 @@
 # Preguntas pendientes – Backend de Rokola
 
-Última actualización: 2026-11-05 (después del Paso 3)
+Última actualización: 2026-11-07 (después del Paso 4)
 
 Cada pregunta trae el contexto, las opciones y una recomendación. Escribe tu decisión en **Respuesta** y la aplico en el paso que corresponda.
 
@@ -81,10 +81,30 @@ Hoy todos los endpoints son públicos, sin login:
 | `GET /api/establecimientos/{id}/horarios` | |
 | `GET /api/establecimientos/{id}/configuracion` | |
 | `GET /api/establecimientos/{id}/codigos-qr` | |
+| `GET /api/roles` | |
+| `GET /api/establecimientos/{id}/usuarios` (nombres y correos) | |
+| `GET /api/usuarios/{id}` | |
 
 Pregunta relacionada: ¿un administrador ve **solo su establecimiento** o todos? La tabla `usuario` tiene `id_establecimiento`, lo que sugiere solo el suyo.
 
 **Recomendación:** horarios y configuración, públicos (el cliente los necesita, por ejemplo para ver la duración máxima de una canción); códigos QR, solo administrador; el listado completo de establecimientos, solo administrador; cada usuario limitado a su establecimiento.
+
+**Respuesta:**
+
+---
+
+### 14. 🔴 Las contraseñas de los usuarios de prueba no sirven para iniciar sesión
+**Se necesita para:** Etapa 7 (inicio de sesión del personal).
+
+Los 5 usuarios de prueba tienen un `password_hash` que empieza como BCrypt (`$2b$12$`), pero mide **64 caracteres**. Un hash BCrypt real mide **60**. Es decir, son valores de relleno: ninguna contraseña coincidirá con ellos.
+
+| Opción | Qué implica |
+|---|---|
+| A. Migración de desarrollo que asigne contraseñas conocidas | Por ejemplo, todos con una contraseña de prueba, guardada ya como BCrypt real |
+| B. Endpoint o script para que un administrador fije contraseñas | Más trabajo, pero sirve también fuera de las pruebas |
+| C. Actualizarlas a mano en `db_rokola` | Lo más rápido, pero solo funciona en tu máquina |
+
+**Recomendación:** decidirlo al llegar a la Etapa 7; probablemente C para empezar y B después. (Relacionada con la pregunta 8.)
 
 **Respuesta:**
 
@@ -138,11 +158,8 @@ El evento con id 4 (`voto_emitido`) tiene `youtube_video_id = '7'`, que no es un
 
 ## Organización del proyecto
 
-### 10. 🟡 ¿Inicializo git y hago el primer commit?
-El proyecto todavía no está en git. Según el PDF, el backend vivía en el repositorio `web-musica`, carpeta `rokolaBackend`, rama `backend`.
-
-- a) ¿Hago `git init` aquí (`tamara/`) con un commit de los pasos 1 a 3? Ya revisé que `.env`, con la contraseña, queda fuera.
-- b) ¿O este proyecto debe ir dentro de tu repositorio `web-musica`? Si es así, ¿dónde está clonado?
+### 10. 🟢 ¿Dónde vive el repositorio?
+Ya hay git en `tamara/` (rama `main`, primer commit con los pasos 1 a 3). Según el PDF, el backend vivía en el repositorio `web-musica`, carpeta `rokolaBackend`, rama `backend`. ¿Lo dejamos aquí o se sube a `web-musica`? Si es lo segundo, ¿dónde está clonado?
 
 **Respuesta:**
 

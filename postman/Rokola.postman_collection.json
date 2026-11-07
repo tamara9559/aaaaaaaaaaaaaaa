@@ -577,11 +577,267 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Paso 4 - Usuarios y roles",
+      "description": "Consulta de roles y usuarios administrativos. Ninguna respuesta debe incluir la huella de la contrasena.",
+      "item": [
+        {
+          "name": "Listar roles",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const roles = pm.response.json();",
+                  "",
+                  "pm.test('Responde 200 OK con una lista', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(roles).to.be.an('array').that.is.not.empty;",
+                  "});",
+                  "",
+                  "pm.test('Cada rol tiene exactamente los campos del contrato', () => {",
+                  "    roles.forEach(r => pm.expect(Object.keys(r)).to.have.members(['id', 'nombre', 'descripcion']));",
+                  "});",
+                  "",
+                  "pm.test('Existen los roles Administrador y Operador', () => {",
+                  "    pm.expect(roles.map(r => r.nombre)).to.include.members(['Administrador', 'Operador']);",
+                  "});",
+                  "",
+                  "pm.test('Viene ordenado por id', () => {",
+                  "    const ids = roles.map(r => r.id);",
+                  "    pm.expect(ids).to.eql([...ids].sort((a, b) => a - b));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/roles",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "roles"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Usuarios de un establecimiento",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const usuarios = pm.response.json();",
+                  "const idEstablecimiento = Number(pm.collectionVariables.get('idEstablecimiento'));",
+                  "",
+                  "pm.test('Responde 200 OK con una lista', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(usuarios).to.be.an('array').that.is.not.empty;",
+                  "});",
+                  "",
+                  "pm.test('Cada usuario tiene exactamente los campos del contrato', () => {",
+                  "    usuarios.forEach(u => {",
+                  "        pm.expect(Object.keys(u)).to.have.members(['id', 'idEstablecimiento', 'rol', 'nombre', 'correo', 'activo', 'cambiarPassword', 'bloqueadoHasta', 'fechaCreacion']);",
+                  "        pm.expect(Object.keys(u.rol)).to.have.members(['id', 'nombre', 'descripcion']);",
+                  "    });",
+                  "});",
+                  "",
+                  "pm.test('Todos pertenecen al establecimiento pedido', () => {",
+                  "    usuarios.forEach(u => pm.expect(u.idEstablecimiento).to.eql(idEstablecimiento));",
+                  "});",
+                  "",
+                  "pm.test('SEGURIDAD: no expone la contrasena ni datos internos del login', () => {",
+                  "    const texto = pm.response.text();",
+                  "    pm.expect(texto).to.not.match(/password_?hash|passwordHash/i);",
+                  "    pm.expect(texto).to.not.include('intentosFallidos');",
+                  "    pm.expect(texto, 'la respuesta contiene un hash BCrypt').to.not.match(/\\$2[aby]\\$/);",
+                  "});",
+                  "",
+                  "pm.test('Viene ordenado por id', () => {",
+                  "    const ids = usuarios.map(u => u.id);",
+                  "    pm.expect(ids).to.eql([...ids].sort((a, b) => a - b));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/establecimientos/{{idEstablecimiento}}/usuarios",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "establecimientos", "{{idEstablecimiento}}", "usuarios"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Usuarios de un establecimiento inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404 y no una lista vacia', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/problem+json');",
+                  "    pm.expect(pm.response.json().title).to.eql('Establecimiento no encontrado');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/establecimientos/999999999/usuarios",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "establecimientos", "999999999", "usuarios"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Obtener usuario por id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const usuario = pm.response.json();",
+                  "",
+                  "pm.test('Responde 200 OK', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Devuelve el usuario pedido con los campos del contrato', () => {",
+                  "    pm.expect(usuario.id).to.eql(Number(pm.collectionVariables.get('idUsuario')));",
+                  "    pm.expect(Object.keys(usuario)).to.have.members(['id', 'idEstablecimiento', 'rol', 'nombre', 'correo', 'activo', 'cambiarPassword', 'bloqueadoHasta', 'fechaCreacion']);",
+                  "});",
+                  "",
+                  "pm.test('Los campos tienen el formato esperado', () => {",
+                  "    pm.expect(usuario.nombre).to.be.a('string').that.is.not.empty;",
+                  "    pm.expect(usuario.correo).to.match(/^[^@\\s]+@[^@\\s]+$/);",
+                  "    pm.expect(usuario.rol.nombre).to.be.oneOf(['Administrador', 'Operador']);",
+                  "    pm.expect(usuario.activo).to.be.a('boolean');",
+                  "    pm.expect(usuario.cambiarPassword).to.be.a('boolean');",
+                  "    pm.expect(Date.parse(usuario.fechaCreacion), 'fechaCreacion debe ser una fecha ISO-8601').to.not.be.NaN;",
+                  "});",
+                  "",
+                  "pm.test('SEGURIDAD: no expone la contrasena ni datos internos del login', () => {",
+                  "    const texto = pm.response.text();",
+                  "    pm.expect(texto).to.not.match(/password_?hash|passwordHash/i);",
+                  "    pm.expect(texto).to.not.include('intentosFallidos');",
+                  "    pm.expect(texto, 'la respuesta contiene un hash BCrypt').to.not.match(/\\$2[aby]\\$/);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/usuarios/{{idUsuario}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "usuarios", "{{idUsuario}}"]
+            },
+            "description": "Usa la variable idUsuario (por defecto 1)."
+          },
+          "response": []
+        },
+        {
+          "name": "Obtener usuario inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const cuerpo = pm.response.json();",
+                  "",
+                  "pm.test('Responde 404 Not Found', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test('El error usa el formato Problem Details', () => {",
+                  "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/problem+json');",
+                  "    pm.expect(cuerpo.status).to.eql(404);",
+                  "    pm.expect(cuerpo.title).to.eql('Usuario no encontrado');",
+                  "    pm.expect(cuerpo.detail).to.include('999999999');",
+                  "    pm.expect(cuerpo.instance).to.eql('/api/usuarios/999999999');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/usuarios/999999999",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "usuarios", "999999999"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Id de usuario con formato invalido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const cuerpo = pm.response.json();",
+                  "",
+                  "pm.test('Responde 400 Bad Request', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('El error usa el formato Problem Details', () => {",
+                  "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/problem+json');",
+                  "    pm.expect(cuerpo.status).to.eql(400);",
+                  "});",
+                  "",
+                  "pm.test('No expone detalles internos (stack trace o clases Java)', () => {",
+                  "    pm.expect(pm.response.text()).to.not.match(/Exception|at com\\.|at org\\./);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/usuarios/abc",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "usuarios", "abc"]
+            }
+          },
+          "response": []
+        }
+      ]
     }
   ],
   "variable": [
     {
       "key": "idEstablecimiento",
+      "value": "1"
+    },
+    {
+      "key": "idUsuario",
       "value": "1"
     }
   ]
