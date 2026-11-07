@@ -1,6 +1,6 @@
 # Preguntas pendientes – Backend de Rokola
 
-Última actualización: 2026-11-07 (después del Paso 5)
+Última actualización: 2026-11-07 (después del Paso 6)
 
 Cada pregunta trae el contexto, las opciones y una recomendación. Escribe tu decisión en **Respuesta** y la aplico en el paso que corresponda.
 
@@ -87,6 +87,8 @@ Hoy todos los endpoints son públicos, sin login:
 | `GET /api/establecimientos/{id}/sesiones` (historial) | |
 | `GET /api/establecimientos/{id}/sesion-abierta` | |
 | `GET /api/sesiones/{id}` | |
+| `GET /api/establecimientos/{id}/dispositivos` | |
+| `GET /api/dispositivos/{id}` | |
 
 Pregunta relacionada: ¿un administrador ve **solo su establecimiento** o todos? La tabla `usuario` tiene `id_establecimiento`, lo que sugiere solo el suyo.
 
@@ -122,6 +124,23 @@ La tabla `sesion` no tiene ninguna regla que impida dos sesiones `abierta` en el
 - b) ¿Quién cierra la sesión: el personal a mano, o el sistema cuando termina el horario de operación? En los datos de prueba, la sesión 2 sigue abierta desde el 3 de noviembre.
 
 **Recomendación:** a) sí, una sola. Se aseguraría con la primera migración nueva, `V2`, que agregaría un índice único parcial (`UNIQUE (id_establecimiento) WHERE estado = 'abierta'`); no borra datos y los de prueba ya lo cumplen. b) El personal la abre y la cierra a mano en el PMV; el cierre automático por horario puede venir después.
+
+**Respuesta:**
+
+---
+
+### 16. 🔴 ¿Cómo se identifica un dispositivo sin pedir datos personales?
+**Se necesita para:** Etapa 5 (registrar el dispositivo cuando el cliente escanea el QR).
+
+La tabla `dispositivo` guarda una huella `device_hash`, única por establecimiento. En los datos de prueba mide **32 caracteres hexadecimales** (128 bits), no 64 como el hash SHA-256 del QR. Falta definir:
+
+- a) ¿Qué envía el teléfono? Por ejemplo, un identificador aleatorio (UUID) que la app o la página web generan la primera vez y guardan en el teléfono.
+- b) ¿El backend guarda ese identificador tal cual o su huella? ¿Con qué algoritmo?
+- c) ¿Cuándo se pide aceptar el aviso de privacidad (`aviso_privacidad_fecha`)? ¿Al primer acceso, o de nuevo si cambia `aviso_privacidad_version` en la configuración?
+
+**Recomendación:** a) UUID aleatorio generado en el teléfono; b) guardar su SHA-256 (64 caracteres, cabe en la columna de 255), como con el QR, y dejar los datos de prueba como están; c) al primer acceso, y otra vez si la versión del aviso es posterior a la fecha en que el dispositivo lo aceptó.
+
+**Ojo:** igual que con el QR, los datos de prueba no traen los identificadores originales, así que para probar habrá que registrar un dispositivo nuevo.
 
 **Respuesta:**
 

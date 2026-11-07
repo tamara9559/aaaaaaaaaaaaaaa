@@ -78,6 +78,19 @@ Pruebas: `postman collection run postman\Rokola.postman_collection.json -e postm
 - Postman: carpeta "Paso 5 - Sesiones musicales", 8 peticiones y 17 aserciones. "Sesión abierta" guarda la variable `idSesion` que usa "Obtener sesión por id". La colección completa da 77/77.
 - Sin prueba en Postman para "No hay sesión abierta": los dos establecimientos de prueba tienen una sesión abierta.
 
+**Paso 6 – Módulo `dispositivo` (solo lectura):** terminado y verificado (2026-11-07).
+
+| Endpoint | Respuesta |
+|---|---|
+| `GET /api/establecimientos/{id}/dispositivos?page=&size=` | Lista paginada `{content, page}`, del usado más recientemente al más antiguo (orden fijo); 404 "Establecimiento no encontrado" si no existe |
+| `GET /api/dispositivos/{id}` | 200 con el dispositivo; 404 "Dispositivo no encontrado"; 400 si el id no es numérico |
+
+- El dispositivo pertenece al **establecimiento**, no a la sesión: el mismo teléfono se reconoce en noches distintas.
+- Archivos en `dispositivo/`: `Dispositivo.kt` (entidad), `TipoDispositivo.kt` (enum `movil`/`tableta`/`otro` + conversor), `DispositivoRepository.kt`, `DispositivoResponse.kt`, `DispositivoService.kt`, `DispositivoController.kt`, `DispositivoNoEncontradoException.kt`.
+- La respuesta **no incluye** `deviceHash`: con ella alguien podría hacerse pasar por otro cliente (por ejemplo, para votar varias veces).
+- El registro del dispositivo al escanear el QR (escritura) queda para la Etapa 5 (ver pregunta 16).
+- Postman: carpeta "Paso 6 - Dispositivos", 6 peticiones y 16 aserciones. Nueva variable `idDispositivo` (por defecto 1). La colección completa da 93/93.
+
 ## Stack
 
 - Kotlin 2.3.21, Spring Boot 4.1.2, Java 21, Gradle 9.8.2 (Kotlin DSL)
@@ -111,6 +124,6 @@ Pruebas: `postman collection run postman\Rokola.postman_collection.json -e postm
 
 ## Próximos pasos
 
-1. Paso 6: módulo `dispositivo` (lectura): identificación de los clientes de una sesión.
-2. Después, `cancion`, y `solicitud` con `voto` y la cola ordenada (Etapa 3 del PDF).
+1. Paso 7: módulo `cancion` (lectura): catálogo de canciones y videos de YouTube ya conocidos.
+2. Después, `solicitud` con `voto` y la cola ordenada (votos descendente, antigüedad ascendente).
 3. Escritura de establecimientos y usuarios (crear/editar): queda para cuando exista la autenticación (Etapa 7), porque solo debe hacerla un administrador.
