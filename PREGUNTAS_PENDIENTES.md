@@ -1,6 +1,8 @@
 # Preguntas pendientes – Backend de Rokola
 
-Última actualización: 2026-11-07 (después del Paso 6)
+Última actualización: 2026-11-07 (después del Paso 7)
+
+> **Siguiente bloqueo:** la **pregunta 1** (voto inicial) se necesita para el Paso 8.
 
 Cada pregunta trae el contexto, las opciones y una recomendación. Escribe tu decisión en **Respuesta** y la aplico en el paso que corresponda.
 
@@ -14,7 +16,9 @@ Cada pregunta trae el contexto, las opciones y una recomendación. Escribe tu de
 ## Reglas de negocio
 
 ### 1. 🔴 ¿El voto inicial de una solicitud se guarda como fila en `voto`?
-**Se necesita para:** Etapa 5 (crear solicitudes, votos y ordenar la cola).
+**Se necesita para:** ⏭️ **el Paso 8 (siguiente)**, la cola de solicitudes con sus votos, y después para la Etapa 5 (crear solicitudes y votar).
+
+**Por qué bloquea el Paso 8:** la cola se ordena por cantidad de votos (de más a menos) y, si empatan, por antigüedad (la más antigua primero). Si el voto de quien pide la canción se cuenta o no, cambia el total de cada solicitud y puede cambiar el orden en que se ve la cola.
 
 El PDF dice: *"Una solicitud nueva comienza en estado de espera y recibe un voto inicial"*. En los datos de prueba, el dispositivo que crea la solicitud **nunca** aparece en la tabla `voto`. Por ejemplo, la solicitud 7 la creó el dispositivo 2, pero sus votos son de los dispositivos 1, 3, 4 y 5.
 
@@ -24,6 +28,8 @@ El PDF dice: *"Una solicitud nueva comienza en estado de espera y recibe un voto
 | B. Voto explícito | `votos activos` | Al crear la solicitud se inserta también un voto del solicitante, y habría que corregir los datos de prueba |
 
 **Recomendación:** A, porque es lo que ya reflejan los datos.
+
+**Cómo responder:** escribe "A" o "B" aquí, o dímelo en el chat (por ejemplo: *"sigue con el Paso 8, opción A"*).
 
 **Respuesta:**
 

@@ -91,6 +91,21 @@ Pruebas: `postman collection run postman\Rokola.postman_collection.json -e postm
 - El registro del dispositivo al escanear el QR (escritura) queda para la Etapa 5 (ver pregunta 16).
 - Postman: carpeta "Paso 6 - Dispositivos", 6 peticiones y 16 aserciones. Nueva variable `idDispositivo` (por defecto 1). La colección completa da 93/93.
 
+**Paso 7 – Módulo `cancion`: catálogo local (solo lectura):** terminado y verificado (2026-11-07).
+
+| Endpoint | Respuesta |
+|---|---|
+| `GET /api/canciones?q=&page=&size=` | Lista paginada ordenada por título. `q` (opcional) busca en título o artista sin distinguir mayúsculas; sin resultados → 200 con lista vacía |
+| `GET /api/canciones/{id}` | 200 con la canción; 404 "Canción no encontrada"; 400 si el id no es numérico |
+| `GET /api/canciones/youtube/{youtubeVideoId}` | La canción de ese video; 404 "Canción no encontrada" si el video no está en el catálogo |
+
+- El catálogo es **común a todos los establecimientos** (la tabla `cancion` no tiene `id_establecimiento`). Los bloqueos por establecimiento (`bloqueo_contenido`) se aplicarán en la Etapa 5.
+- Archivos en `cancion/`: `Cancion.kt` (entidad), `Disponibilidad.kt` (enum `disponible`/`no_disponible`/`restringida`/`desconocida` + conversor), `CancionRepository.kt`, `CancionResponse.kt`, `CancionService.kt`, `CancionController.kt`, `CancionNoEncontradaException.kt` (con `porId` y `porYoutubeVideoId`).
+- La búsqueda escapa `%` y `_`: buscar `%` no devuelve todo el catálogo (probado en Postman).
+- **Limitación:** la búsqueda distingue tildes (`cancion` no encuentra `canción`). Ignorarlas requiere la extensión `unaccent` de PostgreSQL (una migración); se puede decidir más adelante.
+- Solo busca en las canciones ya guardadas; la búsqueda en YouTube es de la Etapa 8.
+- Postman: carpeta "Paso 7 - Canciones", 10 peticiones y 21 aserciones. Nuevas variables `idCancion` (1) y `youtubeVideoId` (`dQw4w9WgXcQ`). La colección completa da 114/114.
+
 ## Stack
 
 - Kotlin 2.3.21, Spring Boot 4.1.2, Java 21, Gradle 9.8.2 (Kotlin DSL)
@@ -124,6 +139,6 @@ Pruebas: `postman collection run postman\Rokola.postman_collection.json -e postm
 
 ## Próximos pasos
 
-1. Paso 7: módulo `cancion` (lectura): catálogo de canciones y videos de YouTube ya conocidos.
-2. Después, `solicitud` con `voto` y la cola ordenada (votos descendente, antigüedad ascendente).
+1. Paso 8: módulos `solicitud` y `voto` (lectura): la cola de una sesión ordenada por votos (descendente) y antigüedad (ascendente). Para contar los votos hace falta decidir la **pregunta 1** (voto inicial).
+2. Con eso termina la parte de lectura de los módulos fundamentales del PDF; después vienen las reglas de negocio (Etapa 5), que dependen de las preguntas 🔴.
 3. Escritura de establecimientos y usuarios (crear/editar): queda para cuando exista la autenticación (Etapa 7), porque solo debe hacerla un administrador.
