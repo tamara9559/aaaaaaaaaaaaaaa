@@ -1,6 +1,6 @@
 # Preguntas pendientes – Backend de Rokola
 
-Última actualización: 2026-11-07 (después del Paso 4)
+Última actualización: 2026-11-07 (después del Paso 5)
 
 Cada pregunta trae el contexto, las opciones y una recomendación. Escribe tu decisión en **Respuesta** y la aplico en el paso que corresponda.
 
@@ -84,6 +84,9 @@ Hoy todos los endpoints son públicos, sin login:
 | `GET /api/roles` | |
 | `GET /api/establecimientos/{id}/usuarios` (nombres y correos) | |
 | `GET /api/usuarios/{id}` | |
+| `GET /api/establecimientos/{id}/sesiones` (historial) | |
+| `GET /api/establecimientos/{id}/sesion-abierta` | |
+| `GET /api/sesiones/{id}` | |
 
 Pregunta relacionada: ¿un administrador ve **solo su establecimiento** o todos? La tabla `usuario` tiene `id_establecimiento`, lo que sugiere solo el suyo.
 
@@ -105,6 +108,20 @@ Los 5 usuarios de prueba tienen un `password_hash` que empieza como BCrypt (`$2b
 | C. Actualizarlas a mano en `db_rokola` | Lo más rápido, pero solo funciona en tu máquina |
 
 **Recomendación:** decidirlo al llegar a la Etapa 7; probablemente C para empezar y B después. (Relacionada con la pregunta 8.)
+
+**Respuesta:**
+
+---
+
+### 15. 🔴 ¿Puede un establecimiento tener más de una sesión abierta? ¿Quién la cierra?
+**Se necesita para:** Etapa 5 (abrir y cerrar sesiones, y saber en qué sesión entra una solicitud).
+
+La tabla `sesion` no tiene ninguna regla que impida dos sesiones `abierta` en el mismo establecimiento. Hoy `GET /api/establecimientos/{id}/sesion-abierta` devuelve la abierta más reciente, pero si hubiera dos, las solicitudes podrían repartirse entre ellas.
+
+- a) ¿Solo puede haber **una** sesión abierta por establecimiento?
+- b) ¿Quién cierra la sesión: el personal a mano, o el sistema cuando termina el horario de operación? En los datos de prueba, la sesión 2 sigue abierta desde el 3 de noviembre.
+
+**Recomendación:** a) sí, una sola. Se aseguraría con la primera migración nueva, `V2`, que agregaría un índice único parcial (`UNIQUE (id_establecimiento) WHERE estado = 'abierta'`); no borra datos y los de prueba ya lo cumplen. b) El personal la abre y la cierra a mano en el PMV; el cierre automático por horario puede venir después.
 
 **Respuesta:**
 

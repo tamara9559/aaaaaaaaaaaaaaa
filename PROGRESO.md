@@ -64,6 +64,20 @@ Pruebas: `postman collection run postman\Rokola.postman_collection.json -e postm
 - `@EntityGraph(attributePaths = ["rol"])` trae cada usuario con su rol en una sola consulta (evita una consulta extra por usuario). Verificado en el log: 2 consultas por petición (existe el establecimiento + usuarios con rol).
 - Postman: carpeta "Paso 4 - Usuarios y roles", 6 peticiones y 19 aserciones (incluidas pruebas de seguridad contra la fuga de la contraseña). Nueva variable de colección `idUsuario` (por defecto 1). La colección completa da 60/60.
 
+**Paso 5 – Módulo `sesion`: sesiones musicales (solo lectura):** terminado y verificado (2026-11-07).
+
+| Endpoint | Respuesta |
+|---|---|
+| `GET /api/establecimientos/{id}/sesiones?page=&size=` | Historial paginado `{content, page}`, de la más reciente a la más antigua (orden fijo; `sort` se ignora) |
+| `GET /api/establecimientos/{id}/sesion-abierta` | La sesión abierta (la más reciente si hubiera varias); 404 "No hay sesión abierta" si no tiene |
+| `GET /api/sesiones/{id}` | 200 con la sesión; 404 "Sesión no encontrada"; 400 si el id no es numérico |
+
+- Las dos rutas de establecimiento responden 404 "Establecimiento no encontrado" si no existe.
+- Archivos en `sesion/`: `Sesion.kt` (entidad), `EstadoSesion.kt` (enum `abierta`/`cerrada` + conversor), `SesionRepository.kt`, `SesionResponse.kt`, `SesionService.kt`, `SesionController.kt`, `SesionNoEncontradaException.kt`, `SinSesionAbiertaException.kt`.
+- `id_evento_calendario` se guarda como un id simple (`idEventoCalendario`), sin entidad `EventoCalendario` todavía: los eventos quedan para un paso propio.
+- Postman: carpeta "Paso 5 - Sesiones musicales", 8 peticiones y 17 aserciones. "Sesión abierta" guarda la variable `idSesion` que usa "Obtener sesión por id". La colección completa da 77/77.
+- Sin prueba en Postman para "No hay sesión abierta": los dos establecimientos de prueba tienen una sesión abierta.
+
 ## Stack
 
 - Kotlin 2.3.21, Spring Boot 4.1.2, Java 21, Gradle 9.8.2 (Kotlin DSL)
@@ -92,9 +106,11 @@ Pruebas: `postman collection run postman\Rokola.postman_collection.json -e postm
 - No hay datos de prueba de un establecimiento sin configuración, así que el 404 "Configuración no encontrada" no tiene prueba en Postman.
 - **Hashes de contraseña de prueba inválidos:** los 5 `password_hash` empiezan como BCrypt (`$2b$12$`) pero miden 64 caracteres; un BCrypt real mide 60. Con ellos nadie podrá iniciar sesión en la Etapa 7 (ver pregunta 14).
 - Los endpoints de usuarios muestran nombres y correos sin autenticación: se restringirán en la Etapa 7.
+- **Varias sesiones abiertas:** la base no impide que un establecimiento tenga dos sesiones abiertas a la vez (ver pregunta 15).
+- La sesión 2 de prueba sigue "abierta" desde el 2026-11-03: nada cierra las sesiones automáticamente (ver pregunta 15).
 
 ## Próximos pasos
 
-1. Paso 5: módulo `sesion` (lectura): sesiones musicales de cada establecimiento y su estado.
-2. Después, `dispositivo`, `cancion`, `solicitud` y `voto`, en ese orden (Etapa 3 del PDF).
+1. Paso 6: módulo `dispositivo` (lectura): identificación de los clientes de una sesión.
+2. Después, `cancion`, y `solicitud` con `voto` y la cola ordenada (Etapa 3 del PDF).
 3. Escritura de establecimientos y usuarios (crear/editar): queda para cuando exista la autenticación (Etapa 7), porque solo debe hacerla un administrador.

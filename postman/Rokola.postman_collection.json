@@ -829,6 +829,332 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Paso 5 - Sesiones musicales",
+      "description": "Consulta de sesiones musicales. 'Sesion abierta' debe ir antes de 'Obtener sesion por id' porque guarda la variable idSesion.",
+      "item": [
+        {
+          "name": "Sesiones de un establecimiento",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function verificarReglasDeSesion(s) {",
+                  "    pm.expect(Object.keys(s)).to.have.members(['id', 'idEstablecimiento', 'idEventoCalendario', 'fechaApertura', 'fechaCierre', 'tipoEvento', 'estado', 'indiceListaDefecto']);",
+                  "    pm.expect(s.estado).to.be.oneOf(['abierta', 'cerrada']);",
+                  "    pm.expect(s.indiceListaDefecto).to.be.a('number').and.above(0);",
+                  "    pm.expect(Date.parse(s.fechaApertura), 'fechaApertura debe ser ISO-8601').to.not.be.NaN;",
+                  "    if (s.estado === 'abierta') {",
+                  "        pm.expect(s.fechaCierre, 'una sesion abierta no tiene fecha de cierre').to.be.null;",
+                  "    } else {",
+                  "        pm.expect(Date.parse(s.fechaCierre)).to.be.at.least(Date.parse(s.fechaApertura));",
+                  "    }",
+                  "}",
+                  "",
+                  "const cuerpo = pm.response.json();",
+                  "const sesiones = cuerpo.content;",
+                  "const idEstablecimiento = Number(pm.collectionVariables.get('idEstablecimiento'));",
+                  "",
+                  "pm.test('Responde 200 OK con una lista paginada', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(sesiones).to.be.an('array').that.is.not.empty;",
+                  "    pm.expect(cuerpo.page).to.include.keys('size', 'number', 'totalElements', 'totalPages');",
+                  "    pm.expect(cuerpo.page.size).to.eql(20);",
+                  "});",
+                  "",
+                  "pm.test('Cada sesion tiene los campos del contrato y respeta las reglas de la base', () => {",
+                  "    sesiones.forEach(verificarReglasDeSesion);",
+                  "});",
+                  "",
+                  "pm.test('Todas pertenecen al establecimiento pedido', () => {",
+                  "    sesiones.forEach(s => pm.expect(s.idEstablecimiento).to.eql(idEstablecimiento));",
+                  "});",
+                  "",
+                  "pm.test('Viene de la mas reciente a la mas antigua', () => {",
+                  "    const fechas = sesiones.map(s => Date.parse(s.fechaApertura));",
+                  "    pm.expect(fechas).to.eql([...fechas].sort((a, b) => b - a));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/establecimientos/{{idEstablecimiento}}/sesiones",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "establecimientos", "{{idEstablecimiento}}", "sesiones"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Sesiones con un elemento por pagina",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const cuerpo = pm.response.json();",
+                  "",
+                  "pm.test('Responde 200 OK con exactamente 1 sesion', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(cuerpo.content).to.have.lengthOf(1);",
+                  "});",
+                  "",
+                  "pm.test('Hay tantas paginas como sesiones', () => {",
+                  "    pm.expect(cuerpo.page.totalPages).to.eql(cuerpo.page.totalElements);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/establecimientos/{{idEstablecimiento}}/sesiones?page=0&size=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "establecimientos", "{{idEstablecimiento}}", "sesiones"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "1" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Sesiones de un establecimiento inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404 y no una lista vacia', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/problem+json');",
+                  "    pm.expect(pm.response.json().title).to.eql('Establecimiento no encontrado');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/establecimientos/999999999/sesiones",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "establecimientos", "999999999", "sesiones"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Sesion abierta de un establecimiento",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function verificarReglasDeSesion(s) {",
+                  "    pm.expect(Object.keys(s)).to.have.members(['id', 'idEstablecimiento', 'idEventoCalendario', 'fechaApertura', 'fechaCierre', 'tipoEvento', 'estado', 'indiceListaDefecto']);",
+                  "    pm.expect(s.estado).to.be.oneOf(['abierta', 'cerrada']);",
+                  "    pm.expect(s.indiceListaDefecto).to.be.a('number').and.above(0);",
+                  "    pm.expect(Date.parse(s.fechaApertura), 'fechaApertura debe ser ISO-8601').to.not.be.NaN;",
+                  "    if (s.estado === 'abierta') {",
+                  "        pm.expect(s.fechaCierre, 'una sesion abierta no tiene fecha de cierre').to.be.null;",
+                  "    } else {",
+                  "        pm.expect(Date.parse(s.fechaCierre)).to.be.at.least(Date.parse(s.fechaApertura));",
+                  "    }",
+                  "}",
+                  "",
+                  "const sesion = pm.response.json();",
+                  "",
+                  "pm.test('Responde 200 OK', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Es una sesion abierta del establecimiento pedido', () => {",
+                  "    verificarReglasDeSesion(sesion);",
+                  "    pm.expect(sesion.estado).to.eql('abierta');",
+                  "    pm.expect(sesion.idEstablecimiento).to.eql(Number(pm.collectionVariables.get('idEstablecimiento')));",
+                  "});",
+                  "",
+                  "// La siguiente peticion (\"Obtener sesion por id\") usa este id.",
+                  "pm.collectionVariables.set('idSesion', String(sesion.id));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/establecimientos/{{idEstablecimiento}}/sesion-abierta",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "establecimientos", "{{idEstablecimiento}}", "sesion-abierta"]
+            },
+            "description": "Es la sesion que usara el cliente despues de escanear el QR. Guarda su id en la variable idSesion."
+          },
+          "response": []
+        },
+        {
+          "name": "Sesion abierta de un establecimiento inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404 Establecimiento no encontrado', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/problem+json');",
+                  "    pm.expect(pm.response.json().title).to.eql('Establecimiento no encontrado');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/establecimientos/999999999/sesion-abierta",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "establecimientos", "999999999", "sesion-abierta"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Obtener sesion por id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function verificarReglasDeSesion(s) {",
+                  "    pm.expect(Object.keys(s)).to.have.members(['id', 'idEstablecimiento', 'idEventoCalendario', 'fechaApertura', 'fechaCierre', 'tipoEvento', 'estado', 'indiceListaDefecto']);",
+                  "    pm.expect(s.estado).to.be.oneOf(['abierta', 'cerrada']);",
+                  "    pm.expect(s.indiceListaDefecto).to.be.a('number').and.above(0);",
+                  "    pm.expect(Date.parse(s.fechaApertura), 'fechaApertura debe ser ISO-8601').to.not.be.NaN;",
+                  "    if (s.estado === 'abierta') {",
+                  "        pm.expect(s.fechaCierre, 'una sesion abierta no tiene fecha de cierre').to.be.null;",
+                  "    } else {",
+                  "        pm.expect(Date.parse(s.fechaCierre)).to.be.at.least(Date.parse(s.fechaApertura));",
+                  "    }",
+                  "}",
+                  "",
+                  "const sesion = pm.response.json();",
+                  "",
+                  "pm.test('Responde 200 OK', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Devuelve la sesion pedida con los campos del contrato', () => {",
+                  "    pm.expect(sesion.id).to.eql(Number(pm.collectionVariables.get('idSesion')));",
+                  "    verificarReglasDeSesion(sesion);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/sesiones/{{idSesion}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "sesiones", "{{idSesion}}"]
+            },
+            "description": "Usa la variable idSesion (la guarda la peticion 'Sesion abierta de un establecimiento')."
+          },
+          "response": []
+        },
+        {
+          "name": "Obtener sesion inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const cuerpo = pm.response.json();",
+                  "",
+                  "pm.test('Responde 404 Not Found', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test('El error usa el formato Problem Details', () => {",
+                  "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/problem+json');",
+                  "    pm.expect(cuerpo.status).to.eql(404);",
+                  "    pm.expect(cuerpo.title).to.eql('Sesión no encontrada');",
+                  "    pm.expect(cuerpo.detail).to.include('999999999');",
+                  "    pm.expect(cuerpo.instance).to.eql('/api/sesiones/999999999');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/sesiones/999999999",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "sesiones", "999999999"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Id de sesion con formato invalido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const cuerpo = pm.response.json();",
+                  "",
+                  "pm.test('Responde 400 Bad Request', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('El error usa el formato Problem Details', () => {",
+                  "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/problem+json');",
+                  "    pm.expect(cuerpo.status).to.eql(400);",
+                  "});",
+                  "",
+                  "pm.test('No expone detalles internos (stack trace o clases Java)', () => {",
+                  "    pm.expect(pm.response.text()).to.not.match(/Exception|at com\\.|at org\\./);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/sesiones/abc",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "sesiones", "abc"]
+            }
+          },
+          "response": []
+        }
+      ]
     }
   ],
   "variable": [
@@ -839,6 +1165,10 @@
     {
       "key": "idUsuario",
       "value": "1"
+    },
+    {
+      "key": "idSesion",
+      "value": "2"
     }
   ]
 }
