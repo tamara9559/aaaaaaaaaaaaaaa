@@ -33,7 +33,7 @@ El PDF dice: *"Una solicitud nueva comienza en estado de espera y recibe un voto
 
 **Respuesta:**
 
----
+B
 
 ### 2. 🟡 ¿Qué día es `dia_semana = 1`?
 **Se necesita para:** validar horarios y saber si el establecimiento está abierto.
@@ -42,7 +42,7 @@ Asumí el estándar ISO-8601: **1 = lunes … 7 = domingo**. Con eso, Bar La Not
 
 **Respuesta:**
 
----
+1 = lunes y 7 = domingo
 
 ### 3. 🟡 Horarios que pasan de medianoche
 **Se necesita para:** calcular si el establecimiento está abierto en un momento dado.
@@ -54,7 +54,8 @@ Bar La Nota tiene franjas como `18:00 → 02:00`. Interpreté que **si `horaFin`
 
 **Respuesta:**
 
----
+a) Sí. 
+b) Sí, termina al comenzar el lunes.
 
 ### 4. 🔴 ¿Cómo se genera y se valida el token del código QR?
 **Se necesita para:** Etapa 5 (el cliente escanea el QR y el sistema identifica el establecimiento).
@@ -71,7 +72,8 @@ La tabla `codigo_qr` guarda solo `token_hash` (64 caracteres, al parecer SHA-256
 
 **Respuesta:**
 
----
+mantener tokens aleatorios, almacenar SHA-256 y administrar los QR desde el panel del establecimiento.
+n código QR impreso podría utilizarse durante varias noches. No recomendaría rotarlo automáticamente en cada sesión. Debe permanecer válido hasta que un administrador decida reemplazarlo, por ejemplo, por pérdida de control sobre su distribución.
 
 ## Seguridad y acceso
 
@@ -102,7 +104,8 @@ Pregunta relacionada: ¿un administrador ve **solo su establecimiento** o todos?
 
 **Respuesta:**
 
----
+Propongo que Administrador y Operador estén limitados al establecimiento al que pertenecen, y que los clientes accedan únicamente a la información necesaria para utilizar el servicio.
+No crearía otro rol ahora. Administrador significa administración completa de su establecimiento; no administración global de toda la plataforma
 
 ### 14. 🔴 Las contraseñas de los usuarios de prueba no sirven para iniciar sesión
 **Se necesita para:** Etapa 7 (inicio de sesión del personal).
@@ -119,7 +122,7 @@ Los 5 usuarios de prueba tienen un `password_hash` que empieza como BCrypt (`$2b
 
 **Respuesta:**
 
----
+B como solución definitiva y C como medida temporal para desarrollo.
 
 ### 15. 🔴 ¿Puede un establecimiento tener más de una sesión abierta? ¿Quién la cierra?
 **Se necesita para:** Etapa 5 (abrir y cerrar sesiones, y saber en qué sesión entra una solicitud).
@@ -133,7 +136,7 @@ La tabla `sesion` no tiene ninguna regla que impida dos sesiones `abierta` en el
 
 **Respuesta:**
 
----
+a) No, únicamente una sesión abierta por establecimiento. b) Apertura y cierre manual por el personal autorizado.
 
 ### 16. 🔴 ¿Cómo se identifica un dispositivo sin pedir datos personales?
 **Se necesita para:** Etapa 5 (registrar el dispositivo cuando el cliente escanea el QR).
@@ -150,7 +153,7 @@ La tabla `dispositivo` guarda una huella `device_hash`, única por establecimien
 
 **Respuesta:**
 
----
+identificador aleatorio persistente generado por el cliente y huella SHA-256 almacenada por el servidor.
 
 ### 6. 🟡 ¿Quién crea y edita establecimientos?
 **Se necesita para:** Etapa 7.
@@ -159,7 +162,7 @@ Todavía no hay endpoints de escritura. Si cada usuario pertenece a un estableci
 
 **Respuesta:**
 
----
+para el PMV, el alta inicial de establecimientos debe realizarse mediante un proceso técnico controlado.
 
 ## Base de datos y despliegue
 
@@ -177,7 +180,8 @@ Ahora trabajamos con la base local `db_rokola`. Según el PDF, la de Railway ten
 
 **Respuesta:**
 
----
+la Db de railway es la bb que se usara para todo el proyecto esta en la nibe y esta coenctada ya en el proyecto
+tiene las 21 tablas y datos de prueba en cada tabla
 
 ### 8. 🟡 ¿Los datos de prueba deben existir fuera de tu máquina?
 Los datos de ejemplo (Bar La Nota, Café Vinilo, canciones…) solo están en `db_rokola` porque se restauraron del backup. Una base nueva, como Railway o la de un compañero, quedaría **vacía**.
@@ -189,14 +193,14 @@ Los datos de ejemplo (Bar La Nota, Café Vinilo, canciones…) solo están en `d
 
 **Respuesta:**
 
----
+A
 
 ### 9. 🟢 Dato inválido en `evento_analitico`
 El evento con id 4 (`voto_emitido`) tiene `youtube_video_id = '7'`, que no es un id de video de YouTube. Por los datos parece que debía ser `RgKAFK5djSk` (canción 7). ¿Lo corrijo en `db_rokola` o lo dejas así?
 
 **Respuesta:**
 
----
+ya lo cambie
 
 ## Organización del proyecto
 
@@ -205,7 +209,7 @@ Ya hay git en `tamara/` (rama `main`, primer commit con los pasos 1 a 3). Según
 
 **Respuesta:**
 
----
+estamos en un ambiente de prueba el repo real esta en otro lado ya despues de que pruebe las clases y demas
 
 ### 11. 🟡 ¿Agregamos pruebas automáticas en Kotlin?
 Hoy cada paso se prueba con Postman (41 aserciones) y con una sola prueba en Kotlin (`contextLoads`). Las instrucciones que pegaste al inicio piden pruebas unitarias, Testcontainers, ktlint y detekt. El PDF pide no agregar herramientas innecesarias.
@@ -220,21 +224,21 @@ Hoy cada paso se prueba con Postman (41 aserciones) y con una sola prueba en Kot
 
 **Respuesta:**
 
----
+A
 
 ### 12. 🟢 Nombre de la base local
 Se creó como `db_rokola` (minúsculas) en lugar de `DB_Rokola`, el nombre del backup, para no tener que escribirla entre comillas en SQL. ¿Te parece bien?
 
 **Respuesta:**
 
----
+dejalo como esta
 
 ### 13. 🟢 Carpeta sobrante de la descarga cancelada
 Quedó `C:\Users\jgara\.jdks\_descarga21`, con un zip de 0 MB del intento de descargar el JDK. ¿La borro?
 
 **Respuesta:**
 
----
+si no afecta al proyecto aslo
 
 ## Recomendación (no es pregunta)
 
